@@ -1,3 +1,6 @@
+;; You will mostly likely need to adjust this font size for your system
+(defvar runemacs/default-font-size 140)
+
 (setq inhibit-startup-message t)
 
 (scroll-bar-mode -1)		; Disbale visible scrollbar
@@ -18,9 +21,19 @@
 
 ;; Set up the visible bell
 (setq visible-bell t)
-(set-face-attribute 'default nil :font "Fira Code Retina" :height 130)
 
-(load-theme 'tango-dark)
+
+;; Font configuration
+(set-face-attribute 'default nil :font "Fira Code Retina" :height runemacs/default-font-size)
+
+;; Set the fixed pitch faces
+(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 140)
+
+;; Set the variable pitch face
+(set-face-attribute 'variable-pitch nil :font "Cantarell" :height 140 :weight 'regular)
+
+;;(load-theme 'tango-dark)
+(load-theme 'misterioso)
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
@@ -52,6 +65,7 @@
 
 ;; Disable line numbers for some modes
 (dolist (mode '(org-mode-hook
+		org-roam-mode-hook
                 term-mode-hook
                 shell-mode-hook
                 treemacs-mode-hook
@@ -160,6 +174,21 @@
   ("l" text-scale-decrease "out")
   ("f" nil "finished" :exit t))
 
+(defhydra hydra-magit (:hint nil)
+  "
+   ^Magit^
+   ^-----
+   _s_: Status
+  "
+  ("s" magit-status)
+  ("b" magit-branch)
+  ("c" magit-commit)
+  ("p" magit-push)
+  ("f" magit-pull)
+  ("g" magit-fetch))
+
+(global-set-key (kbd "C-c m") 'hydra-magit/body)
+
 (use-package multiple-cursors
   :commands (mc/mark-all-in-region mc/mark-all-in-region-regexp)
   :bind (("C-|" . mc/mark-all-in-region)
@@ -198,28 +227,127 @@
   :custom
   (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
-;; (use-package forge
-;;   :after magit)
+;(use-package forge
+;  :after magit)
 
-(use-package org)
+(defun efs/org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (visual-line-mode 1))
+
+;; Org Mode Configuration
+(defun efs/org-font-setup ()
+  ;; Replace list hyphen with dot
+  (font-lock-add-keywords 'org-mode
+                          '(("^ *\\([-]\\) "
+                             (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
+
+  ;; Set faces for heading levels
+  (dolist (face '((org-level-1 . 1.2)
+                  (org-level-2 . 1.1)
+                  (org-level-3 . 1.05)
+                  (org-level-4 . 1.0)
+                  (org-level-5 . 1.1)
+                  (org-level-6 . 1.1)
+                  (org-level-7 . 1.1)
+                  (org-level-8 . 1.1)))
+    (set-face-attribute (car face) nil :font "Cantarell" :weight 'regular :height (cdr face)))
+
+  ;; Ensure that anything that should be fixed-pitch in Org files appears that way
+  (set-face-attribute 'org-block nil :foreground nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-code nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-table nil :foreground "light slate blue"  :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch))
+
+(use-package org
+  :hook (org-mode . efs/org-mode-setup)
+  :config
+  (setq org-ellipsis " ▾")
+
+  (setq org-agenda-start-with-log-mode t)
+  (setq org-log-done 'time)
+  (setq org-log-into-drawer t)
+  
+  (setq org-agenda-files
+	'("~/Chatham/_NOTES/Tasks.org"
+	  "~/Chatham/_NOTES/Birthdays.org"))
+	
+   (efs/org-font-setup))
+
+(use-package org-bullets
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+
+(defun efs/org-mode-visual-fill ()
+      (setq visual-fill-colum-width 100
+	    visual-fill-column-center-text t)
+      (visual-fill-column-mode 1))
+
+
 
 (use-package visual-fill-column
+;; (use-package lsp-mode
+;;   :commands (lsp lsp-deferred)
+;;   :hook (typescript-mode css-mode scss-mode sass-mode ng2-mode
+;; 	 (lsp-mode .(lambda()
+;; 		     (let ((lsp-keymap-prefix "C-c l"))
+;; 		       (lsp-enable-which-key-integration)))))
+;;   :init
+;;   (setq lsp-keep-workspace-alive nil)
+;;   (setq read-process-output-max (* 1024 1024)) ;; 1mb
+;;   (setq gc-cons-threshold 100000000)
+;;   (setq lsp-log-io nil) ;; if set to true can cause performance hit
+;;   (setq lsp-modeline-diagnostics-enable t) ;; show error statistics in modeline
+;;   :config
+;;   (define-key lsp-mode-map (kbd "C-c l") lsp-command-map))
+
    :hook (org-mode . efs/org-mode-visual-fill))
 
-(use-package lsp-mode
-  :commands (lsp lsp-deferred)
-  :hook (typescript-mode css-mode scss-mode sass-mode ng2-mode
-	 (lsp-mode .(lambda()
-		     (let ((lsp-keymap-prefix "C-c l"))
-		       (lsp-enable-which-key-integration)))))
+(use-package org-roam
+  :ensure t
   :init
-  (setq lsp-keep-workspace-alive nil)
-  (setq read-process-output-max (* 1024 1024)) ;; 1mb
-  (setq gc-cons-threshold 100000000)
-  (setq lsp-log-io nil) ;; if set to true can cause performance hit
-  (setq lsp-modeline-diagnostics-enable t) ;; show error statistics in modeline
+  (setq org-roam-v2-ack t)
+  :custom
+  (org-roam-directory "~/Chatham/_RoamNotes")
+  (org-roam-completion-everywhere t)
+  (org-roam-capture-templates
+   '(("d" "default" plain "%?"
+      :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+date: %U\n")
+      :unnarrowed t)
+   ("b" "book notes" plain
+    (file "~/Chatham/_RoamNotes/Templates/BookNoteTemplate.org")
+    :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n")
+    :unnarrowed t)))
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+	 ("C-c n f" . org-roam-node-find)
+	 ("C-c n i" . org-roam-node-insert)
+	 :map org-mode-map
+	 ("C-M-i"   . completion-at-point))
+  :config 
+  (org-roam-setup))
+
+(add-hook 'org-mode-hook
+	  (lambda ()
+	    (setq-local fill-column 220)))
+
+(use-package markdown-mode
+  :ensure t
+  :mode ("README\\.md\\'" . gfm-mode)
+  :mode ("\\.md\\'" . markdown-mode)
+  :mode ("\\.markdown\\'" . markdown-mode)
+  :init (setq markdown-command "multimarkdown"))
+
+
+(use-package lsp-mode
+  :hook (typescript-mode . lsp)
   :config
-  (define-key lsp-mode-map (kbd "C-c l") lsp-command-map))
+  (setq lsp-clients-angular-language-server-command
+	'("ngserver" "--stdio" "--tsProbeLocations" "node_modules;." "--ngProbeLocations" "node_modules;.")))
 
 
 (use-package typescript-mode
@@ -254,10 +382,10 @@
   :after lsp)
 
 (use-package yasnippet
-  :hook (prog-mode . yas-minor-mode)
-  :bind (:map yas-minor-mode-map
-	      ("<tab>" . nil)
-	      ("C-'" . yas-expand)))
+  :config
+  (setq yas-snippet-dir '("~/.emacs.d/snippets"))
+  (yas-global-mode 1))
+
 
 (use-package yasnippet-snippets
   :after yasnippet)
@@ -290,21 +418,28 @@
   :ensure sgml-mode
   :mode "\\.html\\'"
   :hook (html-mode . lsp-deferred))
+(use-package prettier
+  :ensure t)
 (use-package ng2-mode
   :mode ("\\.component.html\\'" "\\.component.ts\\'")
   :hook (ng2-mode . lsp-deferred))
+(use-package django-mode
+  :ensure django-mode
+  :mode "\\.djhtml$\\'"
+  :hook (django-mode . lsp-deferred))
 
-
- 
-
+;;(add-to-list 'projectile-globally-ignored-directories "node_modules")
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(column-number-mode t)
+ '(global-display-line-numbers-mode t)
  '(package-selected-packages
-   '(xref-js2 js2-refactor js2-mode multiple-cursors ng2-mode web-mode vue-mode ssass-mode sass-mode scss-mode rainbow-mode yasnippet-snippets yasnippet lsp-mode visual-fill-column magit counsel-projectile projectile hydra evil-collection evil general helpful counsel ivy-rich which-key rainbow-delimiters doom-modeline all-the-icons swiper use-package ivy command-log-mode)))
+   '(grip-mode pandoc-mode ripgrep prettier web-beautify xref-js2 js2-refactor js2-mode multiple-cursors ng2-mode web-mode vue-mode ssass-mode sass-mode scss-mode rainbow-mode yasnippet-snippets yasnippet lsp-mode visual-fill-column magit counsel-projectile projectile hydra evil-collection evil general helpful counsel ivy-rich which-key rainbow-delimiters doom-modeline all-the-icons swiper use-package ivy command-log-mode django-mode))
+ '(tool-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
