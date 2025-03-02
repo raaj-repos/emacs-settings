@@ -272,8 +272,8 @@
   (setq org-log-into-drawer t)
   
   (setq org-agenda-files
-	'("~/Chatham/_NOTES/Tasks.org"
-	  "~/Chatham/_NOTES/Birthdays.org"))
+	'("~/_NOTES/Tasks.org"
+	  "~/_NOTES/Birthdays.org"))
 	
    (efs/org-font-setup))
 
@@ -313,14 +313,14 @@
   :init
   (setq org-roam-v2-ack t)
   :custom
-  (org-roam-directory "~/Chatham/_RoamNotes")
+  (org-roam-directory "~/_RoamNotes")
   (org-roam-completion-everywhere t)
   (org-roam-capture-templates
    '(("d" "default" plain "%?"
       :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n#+date: %U\n")
       :unnarrowed t)
    ("b" "book notes" plain
-    (file "~/Chatham/_RoamNotes/Templates/BookNoteTemplate.org")
+    (file "~/_RoamNotes/Templates/BookNoteTemplate.org")
     :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n")
     :unnarrowed t)))
   :bind (("C-c n l" . org-roam-buffer-toggle)
